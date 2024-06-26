@@ -10,7 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/go-cmp/cmp"
-	"github.com/upsidr/dynamotest"
+
+	"github.com/rozen03/dynamotest"
 )
 
 func TestMinimalSetupEmpty(t *testing.T) {
@@ -19,7 +20,7 @@ func TestMinimalSetupEmpty(t *testing.T) {
 
 	// Create a new DynamoDB Local instance. Second return value can be called
 	// to delete the instance.
-	client, clean := dynamotest.NewDynamoDB(t)
+	client, clean := dynamotest.NewDynamoDB()
 	defer clean()
 
 	// Prepare table with some data. You can provide as many data set as you
@@ -48,7 +49,7 @@ func TestMinimalSetup(t *testing.T) {
 
 	// Create a new DynamoDB Local instance. Second return value can be called
 	// to delete the instance.
-	client, clean := dynamotest.NewDynamoDB(t)
+	client, clean := dynamotest.NewDynamoDB()
 	defer clean()
 
 	// Prepare table with some data.

@@ -2,6 +2,7 @@ package dynamotest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,13 +17,11 @@ import (
 // NewDynamoDB creates a Docker container with DynamoDB Local, and returns the
 // connected DynamoDB client. Clean up function is returned as well to ensure
 // container gets removed after test is complete.
-func NewDynamoDB(t testing.TB) (*dynamodb.Client, func()) {
-	t.Helper()
+func NewDynamoDB() (Client, func()) {
 
-	var dynamoClient *dynamodb.Client
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		t.Fatalf("Could not connect to docker: %s", err)
+		panic("Could not connect to docker" + err.Error())
 	}
 
 	runOpt := &dockertest.RunOptions{
@@ -35,19 +34,27 @@ func NewDynamoDB(t testing.TB) (*dynamodb.Client, func()) {
 	}
 	resource, err := pool.RunWithOptions(runOpt)
 	if err != nil {
-		t.Fatalf("Could not start DynamoDB Local: %s", err)
+		panic("Could not start DynamoDB Local " + err.Error())
 	}
+	port := resource.GetHostPort("8000/tcp")
+	fmt.Println("Using host:port of", port)
 
-	t.Logf("Using host:port of '%s'", resource.GetHostPort("8000/tcp"))
+	dynamoClient := createDB(pool, port)
+	client := Client{Client: dynamoClient, ContainerID: resource.Container.ID}
 
-	if err = pool.Retry(func() error {
-		cfg, err := config.LoadDefaultConfig(context.Background(),
+	return client, func() {
+		if err = pool.Purge(resource); err != nil {
+			panic("Could not purge DynamoDB " + err.Error())
+		}
+	}
+}
+
+func createDB(pool *dockertest.Pool, port string) *dynamodb.Client {
+	ctx := context.Background()
+	var dynamoClient *dynamodb.Client
+	err := pool.Retry(func() error {
+		cfg, err := config.LoadDefaultConfig(ctx,
 			config.WithRegion("us-east-1"),
-			config.WithEndpointResolverWithOptions(
-				aws.EndpointResolverWithOptionsFunc(
-					func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-						return aws.Endpoint{URL: "http://" + resource.GetHostPort("8000/tcp")}, nil
-					})),
 			config.WithCredentialsProvider(
 				credentials.StaticCredentialsProvider{
 					Value: aws.Credentials{
@@ -60,17 +67,15 @@ func NewDynamoDB(t testing.TB) (*dynamodb.Client, func()) {
 			return err
 		}
 
-		dynamoClient = dynamodb.NewFromConfig(cfg)
+		dynamoClient = dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+			o.BaseEndpoint = aws.String("http://" + port)
+		})
 		return nil
-	}); err != nil {
-		t.Fatalf("Could not connect to the Docker instance of DynamoDB Local: %s", err)
+	})
+	if err != nil {
+		panic("Could not connect to the Docker instance of DynamoDB Local" + err.Error())
 	}
-
-	return dynamoClient, func() {
-		if err = pool.Purge(resource); err != nil {
-			t.Fatalf("Could not purge DynamoDB: %s", err)
-		}
-	}
+	return dynamoClient
 }
 
 type InitialTableSetup struct {
@@ -78,8 +83,13 @@ type InitialTableSetup struct {
 	InitialData []*types.PutRequest
 }
 
+type dynamoClient interface {
+	CreateTable(ctx context.Context, params *dynamodb.CreateTableInput, optFns ...func(*dynamodb.Options)) (*dynamodb.CreateTableOutput, error)
+	BatchWriteItem(ctx context.Context, params *dynamodb.BatchWriteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.BatchWriteItemOutput, error)
+}
+
 // PrepTable iterates the provided input, creates tables and put items.
-func PrepTable(t testing.TB, client *dynamodb.Client, input ...InitialTableSetup) {
+func PrepTable(t testing.TB, client dynamoClient, input ...InitialTableSetup) {
 	t.Helper()
 
 	// Add extra retry setup in case Docker instance is busy. This can happen
