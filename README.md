@@ -11,7 +11,6 @@ Leverage the power of [DynamoDB Local][1] with [ory/dockertest][2] to create you
 
 `dynamotest` is a package designed to help set up a DynamoDB Local Docker instance on your machine as part of Go test code. It uses [`ory/dockertest`][2] to start the DynamoDB Local instance in your Go test code, and is configured so that each call to `dynamotest.NewDynamoDB(t)` will create a dedicated instance, allowing parallel testing on multiple Docker instances. The function returns a new DynamoDB client which is already connected to the instance, enabling you to start using the client immediately. Additionally, it provides a clean-up function to ensure that the Docker instance gets deleted if clean-up is preferred. If you do not call the clean-up function, the instance will keep running, which may be useful for debugging and investigation.
 
-`dynamotest` also offers a helper function, `dynamotest.PrepTable(t, client, ...dynamotest.InitialTableSetup)`, to prepare tables and datasets for setting up the table beforehand.
 
 It is also worth noting that this package uses only the v2 version of the AWS SDK.
 
@@ -54,8 +53,6 @@ func getSchema() dynamodb.CreateTableInput {
 				KeyType:       types.KeyTypeRange,
 			},
 		},
-		// Not necessary yet, but left here for future reference
-		// GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{},
 	}
 }
 ```
