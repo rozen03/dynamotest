@@ -1,5 +1,3 @@
-Here's the updated `README.md` with a more concise example and separated steps for better clarity:
-
 # dynamotest
 
 Leverage the power of [DynamoDB Local][1] with [ory/dockertest][2] to create your DynamoDB test cases effortlessly.
