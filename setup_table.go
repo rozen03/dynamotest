@@ -2,8 +2,9 @@ package dynamotest
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,7 +25,15 @@ import (
 **/
 func (c Client) CreateTestingTable(t *testing.T, tablePrefix string, schema dynamodb.CreateTableInput, initialData ...any) string {
 	t.Helper()
-	table := fmt.Sprintf("%s-%d", tablePrefix, rand.Uint64())
+	randomBytes := make([]byte, 8)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		t.Fatalf("Could not generate random suffix for  table name: %v", err)
+	}
+	//randomBytes to suffix
+	suffix := binary.BigEndian.Uint32(randomBytes)
+	// Generate a random table name
+	table := fmt.Sprintf("%s-%d", tablePrefix, suffix)
 
 	putItems := make([]*types.PutRequest, 0, len(initialData))
 	for _, itemData := range initialData {
@@ -47,7 +56,7 @@ func (c Client) CreateTestingTable(t *testing.T, tablePrefix string, schema dyna
 	// times is too fragile.
 	opt := func(o *dynamodb.Options) { o.RetryMaxAttempts = 10 }
 
-	_, err := c.Client.CreateTable(context.Background(), &schema, opt)
+	_, err = c.Client.CreateTable(context.Background(), &schema, opt)
 	if err != nil {
 		t.Fatalf("Could not create table '%s': %v", table, err)
 	}

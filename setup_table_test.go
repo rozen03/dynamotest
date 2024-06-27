@@ -380,7 +380,7 @@ func Test_Query(t *testing.T) {
 			client, clean := dynamotest.NewDynamoDB()
 			defer clean()
 
-			tableName := client.CreateTestingTable(t, "test-", tc.schema, tc.initialData...)
+			tableName := client.CreateTestingTable(t, "test", tc.schema, tc.initialData...)
 			tc.query.TableName = aws.String(tableName)
 
 			out, err := client.Query(context.Background(), tc.query)
@@ -413,7 +413,7 @@ func Test_Query(t *testing.T) {
 	}
 }
 
-func TestQueryWithUnmarshal2(t *testing.T) {
+func TestQueryWithUnmarshal(t *testing.T) {
 	t.Parallel()
 	cases := map[string]struct {
 		schema      dynamodb.CreateTableInput
@@ -472,7 +472,7 @@ func TestQueryWithUnmarshal2(t *testing.T) {
 			defer clean()
 
 			// Data prep, use simple context.
-			tableName := client.CreateTestingTable(t, "test-", tc.schema, tc.initialData...)
+			tableName := client.CreateTestingTable(t, "test", tc.schema, tc.initialData...)
 			tc.query.TableName = aws.String(tableName)
 
 			out, err := client.Query(context.Background(), tc.query)
